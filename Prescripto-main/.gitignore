@@ -1,0 +1,22 @@
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+.venv/
+backend/.venv/
+
+uploads/
+backend/uploads/
+
+# Environment files
+.env
+backend/.env
+frontend/.env
+
+# Firebase Admin Key
+firebase-admin.json
+Prescripto-main/Prescripto-main/firebase-admin.json
+
+# Build folders
+dist/
+frontend/dist/
