@@ -154,15 +154,16 @@ export default function VoiceAssistant({ onNavigateView, voiceRef }) {
       const matched = detectLocalIntent(cleanText, lang, userRole);
 
       // Console Development Logging
-      console.log(`[VOICE DEBUG - UNIVERSAL MULTILINGUAL MODE]
-Active UI Language: ${lang}
-Raw Spoken Transcript: "${cleanText}"
+      console.log(`[VOICE DEBUG]
+UI Language: ${lang}
+Voice Recognition Locale: en-IN
+Transcript: "${cleanText}"
 Normalized Transcript: "${matched?.normalized || ''}"
-Intent Detected: ${matched?.intent || (matched?.isAiQuestion ? 'ai_question' : 'none')}
-Confidence Score: ${matched?.confidence || 0}
-Confidence Level: ${matched?.confidenceLevel || 'N/A'}
-Selected Target: ${matched?.target || 'N/A'}
-Execution Action: ${matched?.confidenceLevel === 'high' ? 'IMMEDIATE_NAVIGATION' : matched?.confidenceLevel === 'medium' ? 'SHOW_CONFIRMATION_PILL' : matched?.isAiQuestion ? 'AI_FALLBACK' : 'RETRY_PROMPT'}`);
+Detected Language/Style: ${matched?.detectedStyle || 'Tanglish'}
+Matched Dictionary: ${matched?.matchedDictionary || 'Tanglish'}
+Matched Intent: ${matched?.intent || (matched?.isAiQuestion ? 'ai_question' : 'none')}
+Confidence: ${matched?.confidence || 0}
+Action: ${matched?.confidenceLevel === 'high' ? `navigate('/patient/dashboard?view=${matched.target}')` : matched?.confidenceLevel === 'medium' ? 'SHOW_CONFIRMATION_PILL' : matched?.isAiQuestion ? 'AI_FALLBACK' : 'RETRY_PROMPT'}`);
 
       // LAYER 3: General AI Health Question Fallback -> POST /api/voice/chat
       if (matched && matched.isAiQuestion) {

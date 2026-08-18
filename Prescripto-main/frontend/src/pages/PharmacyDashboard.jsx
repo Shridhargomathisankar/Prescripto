@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { api } from '../config/api';
 import { useRealtimeSubscription } from '../hooks/useRealtime';
 import Button from '../components/Button';
@@ -15,6 +16,7 @@ export default function PharmacyDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, authReady, logout, getToken } = useAuth();
+  const { t } = useLanguage();
 
   const [pharmacy, setPharmacy] = useState(null);
   const [stock, setStock] = useState([]);
@@ -278,53 +280,71 @@ export default function PharmacyDashboard() {
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4">
-          <h2 className="text-lg font-semibold text-slate-900 mb-3">Incoming Medicine Requests</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            {t('incomingMedicineRequests') || 'Incoming Medicine Requests'}
+          </h2>
           <div className="space-y-3">
-            {pendingRequests.length === 0 && <p className="text-sm text-slate-500">No pending requests.</p>}
+            {pendingRequests.length === 0 && (
+              <p className="text-sm text-slate-500">{t('noPendingOrders') || 'No pending requests.'}</p>
+            )}
             {pendingRequests.map((r) => (
               <div key={r._id} className="rounded-xl border border-amber-100 bg-amber-50 p-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="rounded-lg border border-amber-200 bg-white p-3">
-                    <p className="font-medium text-slate-900 mb-2">Patient requested medicines</p>
+                    <p className="font-medium text-slate-900 mb-2">
+                      {t('patientRequestedMedicines') || 'Patient requested medicines'}
+                    </p>
                     {(r.requestedMedicines || extractRequestItems(r)).map((item) => (
                       <p key={`${r._id}-${item.medicineName}`} className="text-sm text-slate-700">
-                        {item.medicineName}: {Number(item.requestedDays) || Number(r.requestedDays) || Number(r.days) || 0} day(s)
+                        {item.medicineName}: {Number(item.requestedDays) || Number(r.requestedDays) || Number(r.days) || 0} {t('dayUnit') || 'day(s)'}
                       </p>
                     ))}
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="font-medium text-slate-900 mb-1">Doctor prescription</p>
-                    <p className="text-sm text-slate-700">Doctor: Dr. {r.prescriptionSnapshot?.doctorName || '—'}</p>
+                    <p className="font-medium text-slate-900 mb-1">
+                      {t('doctorPrescription') || 'Doctor prescription'}
+                    </p>
+                    <p className="text-sm text-slate-700">{t('doctor') || 'Doctor'}: Dr. {r.prescriptionSnapshot?.doctorName || '—'}</p>
                     <p className="text-sm text-slate-700">Clinic: {r.prescriptionSnapshot?.clinicName || '—'}</p>
                     {(r.prescriptionSnapshot?.medicines || []).map((m) => (
                       <p key={`${r._id}-pr-${m.name}`} className="text-xs text-slate-600">
-                        {m.name}: {Number(m.durationInDays) || 0} day(s)
+                        {m.name}: {Number(m.durationInDays) || 0} {t('dayUnit') || 'day(s)'}
                       </p>
                     ))}
                   </div>
                 </div>
                 <p className="text-sm text-slate-600">
-                  Patient: {r.patientId?.name} ({r.patientId?.patientId})
+                  {t('patient') || 'Patient'}: {r.patientId?.name} ({r.patientId?.patientId})
                 </p>
                 {(r.requestedMedicines || []).map((item) => (
                   <p key={`${r._id}-bal-${item.medicineName}`} className="text-sm text-slate-600">
-                    {item.medicineName} | Purchased: {Number(item.purchasedDays) || 0} day(s) | Remaining: {Number(item.remainingDays) || 0} day(s)
+                    {item.medicineName} | {t('purchasedDaysLabel') || 'Purchased'}: {Number(item.purchasedDays) || 0} {t('dayUnit') || 'day(s)'} | {t('remainingDaysLabel') || 'Remaining'}: {Number(item.remainingDays) || 0} {t('dayUnit') || 'day(s)'}
                   </p>
                 ))}
-                <p className="text-sm text-slate-600">Request status: Pending</p>
-                <Button className="mt-2" onClick={() => handleMarkReady(r._id)}>Mark Ready</Button>
+                <p className="text-sm text-slate-600">
+                  Status: {t('statusPending') || 'Pending'}
+                </p>
+                <Button className="mt-2" onClick={() => handleMarkReady(r._id)}>
+                  {t('markReady') || 'Mark Ready'}
+                </Button>
               </div>
             ))}
           </div>
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4">
-          <h2 className="text-lg font-semibold text-slate-900 mb-3">Ready Requests</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            {t('readyRequests') || 'Ready Requests'}
+          </h2>
           <div className="space-y-3">
-            {readyRequests.length === 0 && <p className="text-sm text-slate-500">No ready orders.</p>}
+            {readyRequests.length === 0 && (
+              <p className="text-sm text-slate-500">{t('noReadyOrders') || 'No ready orders.'}</p>
+            )}
             {readyRequests.map((r) => (
               <div key={r._id} className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                <p className="font-medium text-slate-900">Requested medicines</p>
+                <p className="font-medium text-slate-900">
+                  {t('patientRequestedMedicines') || 'Requested medicines'}
+                </p>
                 <div className="text-sm text-slate-700">
                   {extractRequestItems(r).map((item) => (
                     <p key={`${r._id}-${item.medicineName}`}>
@@ -333,27 +353,35 @@ export default function PharmacyDashboard() {
                   ))}
                 </div>
                 <p className="text-sm text-slate-600">
-                  Patient: {r.patientId?.name} ({r.patientId?.patientId}) | Status: Ready
+                  {t('patient') || 'Patient'}: {r.patientId?.name} ({r.patientId?.patientId}) | Status: {t('statusReady') || 'Ready'}
                 </p>
-                <Button className="mt-2" onClick={() => handleMarkDelivered(r._id)}>Delivered</Button>
+                <Button className="mt-2" onClick={() => handleMarkDelivered(r._id)}>
+                  {t('markDelivered') || 'Delivered'}
+                </Button>
               </div>
             ))}
           </div>
         </section>
 
         <section className="bg-white rounded-2xl border border-slate-200 p-4">
-          <h2 className="text-lg font-semibold text-slate-900 mb-3">Delivered Requests</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            {t('deliveredRequests') || 'Delivered Requests'}
+          </h2>
           <div className="space-y-3">
-            {deliveredRequests.length === 0 && <p className="text-sm text-slate-500">No delivered requests.</p>}
+            {deliveredRequests.length === 0 && (
+              <p className="text-sm text-slate-500">{t('noDeliveredOrders') || 'No delivered requests.'}</p>
+            )}
             {deliveredRequests.map((r) => (
               <div key={r._id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
                 <p className="font-medium text-slate-900">{r.patientId?.name} ({r.patientId?.patientId})</p>
                 {(r.requestedMedicines || extractRequestItems(r)).map((item) => (
                   <p key={`${r._id}-d-${item.medicineName}`} className="text-sm text-slate-700">
-                    {item.medicineName}: {Number(item.requestedDays) || Number(r.days) || 0} day(s)
+                    {item.medicineName}: {Number(item.requestedDays) || Number(r.days) || 0} {t('dayUnit') || 'day(s)'}
                   </p>
                 ))}
-                <p className="text-sm text-slate-600">Status: Delivered</p>
+                <p className="text-sm text-slate-600">
+                  Status: {t('statusDelivered') || 'Delivered'}
+                </p>
               </div>
             ))}
           </div>

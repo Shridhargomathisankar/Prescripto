@@ -40,7 +40,7 @@ const MEDICAL_QUESTION_PATTERNS = [
   'என்ன செய்ய வேண்டும்',
   'എന്തിനാണ്',
   'ഉപയോഗം',
-  'ఏమిటి',
+  'ഏമിటి',
   'ఎందుకు',
 ];
 
@@ -48,10 +48,10 @@ const FILLER_WORDS = [
   'please', 'can you', 'could you', 'i want to', 'i need to', 'show me', 'open', 'take me to',
   'go to', 'view', 'check', 'give me', 'would you', 'can', 'could', 'should', 'i', 'want', 'need',
   'my', 'me', 'the', 'to', 'a', 'an', 'page', 'ku', 'po', 'kholo', 'karo', 'dikhao', 'chahiye',
-  'enakku', 'venum', 'kaatu', 'tharunga', 'poganum', 'paakanum', 'open pannu', 'pannunga', 'paaka',
-  'naaku', 'kaavali', 'chupinchandi', 'chupinchu', 'teruvu', 'vellali', 'cheyyi', 'chupinchu',
-  'enikku', 'venam', 'kaanikkuka', 'kaanikku', 'thurakku', 'poganum', 'ente', 'naa', 'en', 'ennotte',
-  'ennudaiya', 'meri', 'mera', 'mujhe', 'ko', 'per', 'pe', 'ennoda'
+  'enakku', 'venum', 'kaatu', 'kaattu', 'tharunga', 'poganum', 'paakanum', 'open pannu', 'pannu', 'pannunga', 'paaka', 'pannanum',
+  'naaku', 'kaavali', 'chupinchandi', 'chupinchu', 'teruvu', 'vellali', 'cheyyi',
+  'enikku', 'venam', 'kaanikkuka', 'kaanikku', 'thurakku', 'ente', 'naa', 'en', 'ennotte',
+  'ennudaiya', 'meri', 'mera', 'mujhe', 'ko', 'per', 'pe', 'ennoda', 'bro', 'konjam'
 ];
 
 const INTENT_DICTIONARY = [
@@ -69,7 +69,7 @@ const INTENT_DICTIONARY = [
     phrases: [
       'home', 'dashboard', 'main page', 'open dashboard', 'go home', 'go to dashboard', 'home page', 'show dashboard',
       'முகப்பு', 'டாஷ்போர்டு', 'முகப்பு பக்கம்', 'டாஷ்போர்டு திற', 'முகப்புக்கு செல்', 'முகப்பு போ',
-      'home po', 'home ponga', 'dashboard kholo', 'main page kaatu',
+      'home po', 'home ponga', 'home ku po', 'home page ku po', 'dashboard kholo', 'main page kaatu',
       'डैशबोर्ड', 'मुख्य पृष्ठ', 'होम', 'डैशबोर्ड खोलो', 'होम पर जाओ', 'मुख्य पेज दिखाओ', 'होम पेज',
       'മുഖപ്പു', 'ഡാഷ്ബോർഡ്', 'പ്രധാന പേജ്', 'ഡാഷ്ബോർഡ് തുറക്കുക', 'ഹോം പോകൂ',
       'హోమ్', 'డాష్‌బోర్డ్', 'ప్రధాన పేజీ', 'డాష్‌బోర్డ్ తెరువు', 'హోమ్‌కు వెళ్ళు'
@@ -89,7 +89,7 @@ const INTENT_DICTIONARY = [
     phrases: [
       'prescription', 'prescriptions', 'rx', 'medicine list', 'tablet details', 'my prescriptions', 'show prescriptions', 'doctor prescription', 'prescription history', 'view prescription',
       'மருந்து சீட்டு', 'மருந்துகள்', 'மருந்து பட்டியல்', 'பிரிஸ்கிரிப்ஷன்', 'மருந்து சீட்டு பார்க்க', 'மருந்து காட்டு', 'பிரிஸ்கிரிப்ஷன் பார்க்க', 'என் மருந்து சீட்டு காட்டு',
-      'marundhu', 'marundhu seetu', 'prescription paakanum', 'prescription kaatu', 'en prescription', 'prescription open pannu', 'marundhu kaatu', 'dawai',
+      'marundhu', 'marundhu seetu', 'prescription paakanum', 'prescription kaatu', 'en prescription kaatu', 'en prescription', 'prescription open pannu', 'marundhu kaatu', 'dawai', 'bro prescription konjam kaatu', 'enakku prescription open pannanum', 'meri prescription open pannu', 'prescription kaatu please',
       'प्रिस्क्रिप्शन', 'दवाइयां', 'दवा की पर्ची', 'दवाई', 'प्रिस्क्रिप्शन दिखाओ', 'मेरी दवाइयां', 'दवा की पर्ची खोलो', 'meri prescription kholo',
       'പ്രിസ്ക്രിപ്ഷൻ', 'മരുന്ന് കുറിപ്പ്', 'മരുന്നുകൾ', 'എന്റെ പ്രിസ്ക്രിപ്ഷൻ', 'മരുന്ന് കാണിക്കൂ', 'പ്രിസ്ക്രിപ്ഷൻ തുറക്കൂ', 'ente prescription thurakku',
       'ప్రిస్క్రిప్షన్', 'మందుల చీటీ', 'మందులు', 'నా ప్రిస్క్రిప్షన్', 'ప్రిస్క్రిప్షన్ చూపించు', 'మందుల వివరాలు', 'naa prescription open cheyyi', 'naa prescription chupinchu'
@@ -109,7 +109,7 @@ const INTENT_DICTIONARY = [
     phrases: [
       'reports', 'report', 'scan report', 'lab report', 'test results', 'blood report', 'medical reports', 'show reports', 'open reports', 'scan results',
       'அறிக்கை', 'அறிக்கைகள்', 'ஸ்கேன் அறிக்கை', 'லேப் ரிப்போர்ட்', 'அறிக்கை பார்க்க', 'ரிப்போர்ட் காட்டு', 'அறிக்கைகள் பார்க்க', 'என் ரிப்போர்ட்ஸ் காட்டு',
-      'scan report open pannu', 'report paakanum', 'report kaatu', 'enakku reports venum',
+      'scan report open pannu', 'reports open pannu', 'reports konjam kaatu', 'report paakanum', 'report kaatu', 'en report kaatu', 'enakku reports venum',
       'रिपोर्ट', 'रिपोर्ट्स', 'स्कैन रिपोर्ट', 'लैब रिपोर्ट', 'मेरी रिपोर्ट दिखाओ', 'रिपोर्ट्स खोलो', 'जांच रिपोर्ट',
       'റിപ്പോർട്ട്', 'റിപ്പോർട്ടുകൾ', 'സ്കാൻ റിപ്പോർട്ട്', 'ലാബ് റിപ്പോർട്ട്', 'എന്റെ റിപ്പോർട്ട് കാണിക്കൂ', 'റിപ്പോർട്ടുകൾ തുറക്കൂ', 'ente report thurakku',
       'రిపోర్ట్', 'రిపోర్టులు', 'స్కాన్ రిపోర్ట్', 'లాబ్ రిపోర్ట్', 'నా రిపోర్ట్ చూపించు', 'రిపోర్టులు తెరువు', 'naa report chupinchu'
@@ -129,7 +129,7 @@ const INTENT_DICTIONARY = [
     phrases: [
       'reminder', 'reminders', 'medicine reminder', 'medicine reminders', 'open medicine reminder', 'open medicine reminders', 'show medicine reminder', 'show my medicine reminders', 'my medicine reminder', 'medication reminder', 'medication reminders', 'medicine schedule', 'my medicine schedule', 'show my medicine schedule', 'pill reminder', 'reminder timings', 'alarm', 'dosage timing', 'show reminders',
       'நினைவூட்டல்', 'மருந்து நினைவூட்டல்', 'மருந்து நினைவூட்டல்கள்', 'மருந்து reminder', 'மருந்து நினைவூட்டலை காட்டு', 'மருந்து நினைவூட்டல் காட்டு', 'நினைவூட்டல்கள்', 'நினைவூட்டல் காட்டு',
-      'marundhu reminder', 'marundhu reminders', 'marundhu reminder kaatu', 'medicine reminder kaatu', 'en medicine reminder kaatu', 'marundhu ninaivootral', 'marundhu schedule', 'reminder kaatu', 'reminder timing', 'reminder paakanum',
+      'marundhu reminder', 'marundhu reminders', 'marundhu reminder kaatu', 'medicine reminder kaatu', 'medicine reminder open pannu', 'en medicine reminder kaatu', 'marundhu ninaivootral', 'marundhu schedule', 'reminder kaatu', 'reminder timing', 'reminder paakanum',
       'दवा रिमाइंडर', 'दवाई रिमाइंडर', 'दवा की याद दिलाओ', 'मेरी दवा की रिमाइंडर दिखाओ', 'दवा रिमाइंडर खोलो', 'मेरी दवा रिमाइंडर दिखाओ', 'रिमाइंडर', 'रिमाइंडर दिखाओ', 'अलार्म', 'दवा का समय', 'meri medicine reminder kholo', 'dawai reminder',
       'മരുന്ന് റിമൈൻഡർ', 'മരുന്ന് റിമൈൻഡറുകൾ', 'എന്റെ മരുന്ന് റിമൈൻഡർ കാണിക്കുക', 'മരുന്ന് റിമൈൻഡർ തുറക്കുക', 'ഓർമ്മപ്പെടുത്തൽ', 'മരുന്ന് ഓർമ്മപ്പെടുത്തൽ', 'ഓർമ്മപ്പെടുത്തലുകൾ', 'ഓർമ്മപ്പെടുത്തൽ കാണിക്കൂ', 'ente medicine reminder thurakku',
       'మందుల రిమైండర్', 'మందుల రిమైండర్లు', 'నా మందుల రిమైండర్ చూపించు', 'మందుల రిమైండర్ ఓపెన్ చేయి', 'రిమైండర్', 'మందుల రిమైండర్', 'రిమైండర్లు', 'రిమైండర్ చూపించు', 'naa medicine reminder chupinchu'
@@ -163,13 +163,13 @@ const INTENT_DICTIONARY = [
       en: 'Opening Requests',
       ta: 'கோரிக்கைகள் திறக்கப்படுகிறது',
       hi: 'अनुरोध खोले जा रहे हैं',
-      ml: 'அപേക്ഷകൾ തുറക്കുന്നു',
-      te: 'அభ్యర్థనలు తెరుస్తోంది',
+      ml: 'അപേക്ഷകൾ തുറക്കുന്നു',
+      te: 'அభ్యర్థனలు తెరుస్తోంది',
     },
     phrases: [
       'requests', 'request', 'access requests', 'pending requests', 'medicine requests', 'show requests', 'open requests',
       'கோரிக்கைகள்', 'கோரிக்கை', 'கோரிக்கைகள் காட்டு', 'அனுமதி கோரிக்கை',
-      'access request', 'request paakanum', 'requests kaatu', 'pending request',
+      'access request', 'request paakanum', 'requests kaatu', 'request check pannu', 'pending request check pannu', 'access request check pannu', 'pending request',
       'अनुरोध', 'रिक्वेस्ट', 'अनुरोध दिखाओ', 'पेंडिंग रिक्वेस्ट',
       'അപേക്ഷകൾ', 'റിക്വസ്റ്റ്', 'അപേക്ഷകൾ കാണിക്കുക', 'റിക്വസ്റ്റ് തുറക്കൂ',
       'అభ్యర్థనలు', 'రిక్వెస్ట్', 'అభ్యర్థనలు చూపించు', 'రిక్వెస్టులు తెరువు'
@@ -184,12 +184,12 @@ const INTENT_DICTIONARY = [
       ta: 'சுயவிவரம் திறக்கப்படுகிறது',
       hi: 'प्रोफ़ाइल खोली जा रही है',
       ml: 'പ്രൊഫൈൽ തുറക്കുന്നു',
-      te: 'ప్రൊഫైல் తెరుస్తోంది',
+      te: 'ప్రొఫైల్ తెరుస్తోంది',
     },
     phrases: [
       'profile', 'my profile', 'account', 'my details', 'user profile', 'open profile', 'show profile',
       'சுயவிவரம்', 'என் சுயவிவரம்', 'சுயவிவரம் காட்டு', 'சுயவிவரம் திற',
-      'profile kaatu', 'profile open pannu', 'profile dikhao',
+      'profile kaatu', 'profile open pannu', 'en profile open pannu', 'profile dikhao',
       'प्रोफाइल', 'मेरी प्रोफाइल', 'प्रोफ़ाइल खोलो', 'मेरा विवरण',
       'പ്രൊഫൈൽ', 'എന്റെ പ്രൊഫൈൽ', 'പ്രൊഫൈൽ കാണിക്കൂ', 'പ്രൊഫൈൽ തുറക്കൂ',
       'ప్రొఫైల్', 'నా ప్రొఫైల్', 'ప్రొఫైల్ చూపించు', 'ప్రొఫైల్ తెరువు'
@@ -240,6 +240,24 @@ export function stripFillerWords(normText) {
   return result.replace(/\s+/g, ' ').trim() || normText;
 }
 
+export function detectLanguageStyle(normText) {
+  if (/[\u0B80-\u0BFF]/.test(normText)) return { detectedStyle: 'Tamil', matchedDictionary: 'Tamil' };
+  if (/[\u0900-\u097F]/.test(normText)) return { detectedStyle: 'Hindi', matchedDictionary: 'Hindi' };
+  if (/[\u0D00-\u0D7F]/.test(normText)) return { detectedStyle: 'Malayalam', matchedDictionary: 'Malayalam' };
+  if (/[\u0C00-\u0C7F]/.test(normText)) return { detectedStyle: 'Telugu', matchedDictionary: 'Telugu' };
+
+  const tanglishKeywords = [
+    'kaatu', 'kaattu', 'pannu', 'pannanum', 'venum', 'po', 'konjam', 'enakku', 'en',
+    'paakanum', 'seetu', 'kattunga', 'ennoda', 'ponga', 'paaka', 'dikhao', 'kholo'
+  ];
+  const words = normText.toLowerCase().split(/\s+/);
+  if (words.some((w) => tanglishKeywords.includes(w))) {
+    return { detectedStyle: 'Tanglish', matchedDictionary: 'Tanglish' };
+  }
+
+  return { detectedStyle: 'English', matchedDictionary: 'English' };
+}
+
 /* =========================================================
    2. Negation & Medical Question Detectors
    ========================================================= */
@@ -260,14 +278,16 @@ export function detectLocalIntent(rawTranscript, currentLang = 'en', userRole = 
   const norm = normalizeTranscript(rawTranscript);
   if (!norm) return null;
 
+  const { detectedStyle, matchedDictionary } = detectLanguageStyle(norm);
+
   // Negation Safeguard
   if (containsNegation(norm)) {
-    return { unrecognized: true, reason: 'negation' };
+    return { unrecognized: true, reason: 'negation', normalized: norm, detectedStyle, matchedDictionary };
   }
 
   // Layer 3 Check: General AI Health Question Fallback
   if (isMedicalQuestion(norm)) {
-    return { isAiQuestion: true, query: rawTranscript };
+    return { isAiQuestion: true, query: rawTranscript, normalized: norm, detectedStyle, matchedDictionary };
   }
 
   const strippedNorm = stripFillerWords(norm);
@@ -325,6 +345,8 @@ export function detectLocalIntent(rawTranscript, currentLang = 'en', userRole = 
       spoken: bestMatch.spoken[currentLang] || bestMatch.spoken.en,
       confidence: maxScore,
       normalized: strippedNorm,
+      detectedStyle,
+      matchedDictionary,
     };
   }
 
@@ -339,10 +361,18 @@ export function detectLocalIntent(rawTranscript, currentLang = 'en', userRole = 
       spoken: bestMatch.spoken[currentLang] || matchedSpokenForLang(bestMatch, currentLang),
       confidence: maxScore,
       normalized: strippedNorm,
+      detectedStyle,
+      matchedDictionary,
     };
   }
 
-  return { unrecognized: true, confidence: maxScore, normalized: strippedNorm };
+  return {
+    unrecognized: true,
+    confidence: maxScore,
+    normalized: strippedNorm,
+    detectedStyle,
+    matchedDictionary
+  };
 }
 
 function matchedSpokenForLang(item, lang) {

@@ -39,18 +39,10 @@ class VoiceService {
   }
 
   mapLangCode(lang) {
-    switch (lang) {
-      case 'ta':
-        return 'ta-IN';
-      case 'hi':
-        return 'hi-IN';
-      case 'ml':
-        return 'ml-IN';
-      case 'te':
-        return 'te-IN';
-      default:
-        return 'en-IN';
-    }
+    // Universal Multilingual Voice STT Mode:
+    // Using 'en-IN' ensures Tanglish, Hinglish, Romanized Indic speech, and English
+    // are transcribed into text regardless of active UI language selection (ta, ml, hi, te, en).
+    return 'en-IN';
   }
 
   /* =========================================================

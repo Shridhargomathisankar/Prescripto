@@ -65,7 +65,7 @@ export default function MobileBottomNavigation({
             }`}
         >
           <span className="text-xl leading-none">📥</span>
-          <span className="text-[10px] mt-1 font-medium">Requests</span>
+          <span className="text-[10px] mt-1 font-medium">{t('requests') || 'Requests'}</span>
           {activeTab === 'requests' && (
             <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-0.5" />
           )}

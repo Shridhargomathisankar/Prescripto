@@ -22,10 +22,12 @@ function getPrescriptionMaxDays(prescription) {
   );
 }
 
-function formatRequestStatus(status) {
-  if (status === 'ready') return 'Ready';
-  if (status === 'picked_up' || status === 'delivered') return 'Delivered';
-  return 'Pending';
+function formatRequestStatus(status, t) {
+  const tr = t || ((k) => k);
+  if (status === 'ready') return tr('statusReady') || 'Ready';
+  if (status === 'picked_up') return tr('pickedUp') || 'Picked Up';
+  if (status === 'delivered') return tr('statusDelivered') || 'Delivered';
+  return tr('statusPending') || 'Pending';
 }
 
 export default function PatientDashboard() {
@@ -453,10 +455,10 @@ export default function PatientDashboard() {
             </span>
           </div>
           <p className="text-sm font-semibold text-slate-800 mb-1">
-            Medicine Requirement Status
+            {t('medicineRequirementStatus') || 'Medicine Requirement Status'}
           </p>
           <p className="text-xs text-slate-500">
-            Track Pending, Ready, and Delivered medicine requests.
+            {t('trackMedicineRequests') || 'Track Pending, Ready, and Delivered medicine requests.'}
           </p>
         </button>
 
@@ -478,7 +480,7 @@ export default function PatientDashboard() {
             {t('requests') || 'Requests'}
           </p>
           <p className="text-xs text-slate-500">
-            View Pending & Completed Access, Consultation & Order Requests.
+            {t('requestsCardDesc') || 'View Pending & Completed Access, Consultation & Order Requests.'}
           </p>
         </button>
 
@@ -632,32 +634,36 @@ export default function PatientDashboard() {
   const renderMedicineStatus = () => (
     <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-teal-800">Medicine Requirement Status</h2>
+        <h2 className="text-lg font-semibold text-teal-800">
+          {t('medicineRequirementStatus') || 'Medicine Requirement Status'}
+        </h2>
         <button
           type="button"
           onClick={() => setView('home')}
           className="text-xs text-sky-600 hover:underline"
         >
-          Back to dashboard
+          {t('backToDashboard') || 'Back to dashboard'}
         </button>
       </div>
 
       {medicineRequests.length === 0 ? (
-        <p className="text-slate-500 text-sm">No medicine requests yet.</p>
+        <p className="text-slate-500 text-sm">
+          {t('noMedicineRequestsYet') || 'No medicine requests yet.'}
+        </p>
       ) : (
         <div className="space-y-3">
           {medicineRequests.map((req) => (
             <div key={req._id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-800">{req.pharmacyId?.pharmacyName || 'Pharmacy'}</p>
-                <span className="text-xs font-semibold text-slate-700">{formatRequestStatus(req.status)}</span>
+                <span className="text-xs font-semibold text-slate-700">{formatRequestStatus(req.status, t)}</span>
               </div>
               {(req.requestedMedicines || []).map((item) => (
                 <div key={`${req._id}-${item.medicineName}`} className="text-xs text-slate-700">
-                  <p>{item.medicineName}</p>
-                  <p>Requested: {Number(item.requestedDays) || 0} day(s)</p>
-                  <p>Purchased: {Number(item.purchasedDays) || 0} day(s)</p>
-                  <p>Remaining balance: {Number(item.remainingDays) || 0} day(s)</p>
+                  <p className="font-semibold text-slate-800">{item.medicineName}</p>
+                  <p>{t('requestedDaysLabel') || 'Requested'}: {Number(item.requestedDays) || 0} {t('dayUnit') || 'day(s)'}</p>
+                  <p>{t('purchasedDaysLabel') || 'Purchased'}: {Number(item.purchasedDays) || 0} {t('dayUnit') || 'day(s)'}</p>
+                  <p>{t('remainingDaysLabel') || 'Remaining balance'}: {Number(item.remainingDays) || 0} {t('dayUnit') || 'day(s)'}</p>
                 </div>
               ))}
             </div>

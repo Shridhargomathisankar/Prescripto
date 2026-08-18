@@ -12,32 +12,70 @@ export default function RequestsScreen({
   const { t } = useLanguage();
   const [tab, setTab] = useState('pending'); // 'pending' | 'completed'
 
+  const formatStatusText = (status) => {
+    switch (status) {
+      case 'approved':
+        return t('statusApproved') || 'APPROVED';
+      case 'accepted':
+        return t('statusAccepted') || 'ACCEPTED';
+      case 'ready':
+        return t('statusReady') || 'READY';
+      case 'delivered':
+        return t('statusDelivered') || 'DELIVERED';
+      case 'picked_up':
+        return t('pickedUp') || 'PICKED UP';
+      case 'pending':
+        return t('statusPending') || 'PENDING';
+      case 'rejected':
+        return t('statusRejected') || 'REJECTED';
+      case 'closed':
+        return t('statusClosed') || 'CLOSED';
+      case 'rescheduled':
+        return t('statusRescheduled') || 'RESCHEDULED';
+      default:
+        return (status || 'PENDING').toUpperCase();
+    }
+  };
+
+  const getTypeLabel = (typeKey) => {
+    switch (typeKey) {
+      case 'doctor_access':
+        return t('doctorAccessRequest') || 'Doctor Access Request';
+      case 'consultation':
+        return t('consultationRequest') || 'Consultation Request';
+      case 'medicine':
+        return t('medicineRequest') || 'Medicine Request';
+      default:
+        return typeKey;
+    }
+  };
+
   const allRequests = [
     ...(accessRequests || []).map((r) => ({
       id: r._id || r.id,
-      type: 'Doctor Access Request',
-      title: `Access Request from Dr. ${r.doctorId?.name || 'Doctor'}`,
+      typeKey: 'doctor_access',
+      title: `${t('accessRequestFrom') || 'Access Request from'} Dr. ${r.doctorId?.name || 'Doctor'}`,
       subtitle: r.doctorId?.clinicName || 'Clinic / Hospital',
       date: r.requestedAt || r.createdAt,
-      status: r.status, // pending, approved, rejected, closed
+      status: r.status,
       raw: r,
     })),
     ...(consultRequests || []).map((r) => ({
       id: r._id || r.id,
-      type: 'Consultation Request',
-      title: `Consultation Request with Dr. ${r.doctorId?.name || 'Doctor'}`,
-      subtitle: `Requested Date: ${r.requestedDate ? new Date(r.requestedDate).toLocaleDateString() : '—'}`,
+      typeKey: 'consultation',
+      title: `${t('consultationRequestWith') || 'Consultation Request with'} Dr. ${r.doctorId?.name || 'Doctor'}`,
+      subtitle: `${t('duration') || 'Requested Date'}: ${r.requestedDate ? new Date(r.requestedDate).toLocaleDateString() : '—'}`,
       date: r.createdAt || r.requestedDate,
-      status: r.status, // pending, accepted, rescheduled, rejected
+      status: r.status,
       raw: r,
     })),
     ...(medicineRequests || []).map((r) => ({
       id: r._id || r.id,
-      type: 'Medicine Request',
-      title: `Order from ${r.pharmacyId?.pharmacyName || 'Pharmacy'}`,
-      subtitle: `${(r.requestedMedicines || []).length} item(s)`,
+      typeKey: 'medicine',
+      title: `${t('orderFrom') || 'Order from'} ${r.pharmacyId?.pharmacyName || 'Pharmacy'}`,
+      subtitle: `${(r.requestedMedicines || []).length} ${t('itemCount') || 'item(s)'}`,
       date: r.createdAt,
-      status: r.status, // pending, ready, picked_up, delivered, rejected
+      status: r.status,
       raw: r,
     })),
   ];
@@ -62,9 +100,11 @@ export default function RequestsScreen({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Requests & Sessions</h1>
+          <h1 className="text-xl font-bold text-slate-800">
+            {t('requestsAndSessions') || 'Requests & Sessions'}
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manage all your active access requests, appointments, and medicine orders
+            {t('requestsAndSessionsDesc') || 'Manage all your active access requests, appointments, and medicine orders'}
           </p>
         </div>
         {onNavigateHome && (
@@ -73,7 +113,7 @@ export default function RequestsScreen({
             onClick={onNavigateHome}
             className="text-xs text-blue-600 hover:underline font-medium"
           >
-            ← Back to Home
+            {t('backToHome') || '← Back to Home'}
           </button>
         )}
       </div>
@@ -89,7 +129,7 @@ export default function RequestsScreen({
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
-          Pending Requests ({pendingList.length})
+          {t('pendingRequests') || 'Pending Requests'} ({pendingList.length})
         </button>
         <button
           type="button"
@@ -100,7 +140,7 @@ export default function RequestsScreen({
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
-          Completed Requests ({completedList.length})
+          {t('completedRequests') || 'Completed Requests'} ({completedList.length})
         </button>
       </div>
 
@@ -108,21 +148,23 @@ export default function RequestsScreen({
       <div className="space-y-3">
         {displayList.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400 text-sm">
-            No {tab} requests found.
+            {tab === 'pending'
+              ? t('noPendingRequestsFound') || 'No pending requests found.'
+              : t('noCompletedRequestsFound') || 'No completed requests found.'}
           </div>
         ) : (
           displayList.map((item) => (
             <div
-              key={`${item.type}-${item.id}`}
+              key={`${item.typeKey}-${item.id}`}
               className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 mt-0.5">
-                  {item.type.includes('Doctor') ? '🩺' : item.type.includes('Medicine') ? '📦' : '📅'}
+                  {item.typeKey === 'doctor_access' ? '🩺' : item.typeKey === 'medicine' ? '📦' : '📅'}
                 </div>
                 <div>
                   <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full">
-                    {item.type}
+                    {getTypeLabel(item.typeKey)}
                   </span>
                   <h3 className="font-semibold text-slate-800 text-sm mt-1">{item.title}</h3>
                   <p className="text-xs text-slate-500 mt-0.5">{item.subtitle}</p>
@@ -133,7 +175,7 @@ export default function RequestsScreen({
               </div>
 
               <div className="flex items-center gap-2">
-                {item.type === 'Doctor Access Request' && item.status === 'pending' ? (
+                {item.typeKey === 'doctor_access' && item.status === 'pending' ? (
                   <>
                     <button
                       type="button"
@@ -143,7 +185,7 @@ export default function RequestsScreen({
                       }
                       className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
                     >
-                      Reject
+                      {t('reject') || 'Reject'}
                     </button>
                     <button
                       type="button"
@@ -153,7 +195,7 @@ export default function RequestsScreen({
                       }
                       className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition"
                     >
-                      Accept
+                      {t('accept') || 'Accept'}
                     </button>
                   </>
                 ) : (
@@ -168,7 +210,7 @@ export default function RequestsScreen({
                         : 'bg-slate-100 text-slate-600'
                     }`}
                   >
-                    {item.status ? item.status.toUpperCase() : 'PENDING'}
+                    {formatStatusText(item.status)}
                   </span>
                 )}
               </div>
