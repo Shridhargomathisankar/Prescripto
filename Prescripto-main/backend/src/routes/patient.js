@@ -4,6 +4,7 @@ import Patient from '../models/Patient.js';
 import Doctor from '../models/Doctor.js';
 import Pharmacy from '../models/Pharmacy.js';
 import MedicineRequest from '../models/MedicineRequest.js';
+import { supabase } from '../config/supabase.js';
 
 const router = Router();
 
@@ -225,9 +226,11 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
   try {
     const phone = normalizePhone(req.user.phone);
     const { doctorId } = req.params;
+    console.log(`[ACCESS ACCEPT] Patient phone=${phone} processing accept for doctorId=${doctorId}`);
 
     const patient = await Patient.findOne({ phone });
     if (!patient) {
+      console.warn(`[ACCESS ACCEPT] Patient not found for phone=${phone}`);
       return res.status(404).json({ error: 'Patient not found' });
     }
 
@@ -242,6 +245,7 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
     );
 
     if (reqIndex === -1) {
+      console.warn(`[ACCESS ACCEPT] Pending request not found for doctorId=${doctorId}`);
       return res.status(404).json({ error: 'Access request not found' });
     }
 
@@ -256,6 +260,7 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
         new Date(r.autoCloseAt) > now
     );
     if (hasActiveSession) {
+      console.warn(`[ACCESS ACCEPT] Consultation session already active for doctorId=${doctorId}`);
       return res.status(400).json({
         error: 'A consultation session is already active for this doctor',
       });
@@ -268,16 +273,21 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
     patient.accessRequests[reqIndex].autoCloseAt = autoCloseAt;
 
     const targetArId = patient.accessRequests[reqIndex]._id || patient.accessRequests[reqIndex].id;
-    if (targetArId) {
-      await supabase
-        .from('access_requests')
-        .update({
-          status: 'approved',
-          responded_at: now.toISOString(),
-          session_started_at: now.toISOString(),
-          auto_close_at: autoCloseAt.toISOString(),
-        })
-        .eq('id', targetArId);
+    if (targetArId && supabase) {
+      try {
+        await supabase
+          .from('access_requests')
+          .update({
+            status: 'approved',
+            responded_at: now.toISOString(),
+            session_started_at: now.toISOString(),
+            auto_close_at: autoCloseAt.toISOString(),
+          })
+          .eq('id', targetArId);
+        console.log(`[ACCESS ACCEPT] Supabase access_requests record ${targetArId} updated to approved.`);
+      } catch (subErr) {
+        console.error('[ACCESS ACCEPT] Supabase update warning:', subErr.message);
+      }
     }
 
     patient.activeSession = {
@@ -286,7 +296,11 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
       startedAt: now,
     };
 
-    const doctor = await Doctor.findById(doctorId).select('name clinicName').lean();
+    let doctor = null;
+    try {
+      doctor = await Doctor.findById(doctorId).select('name clinicName').lean();
+    } catch (_) {}
+
     patient.notifications = patient.notifications || [];
     patient.notifications.push({
       type: 'session',
@@ -301,13 +315,31 @@ router.post('/access-requests/:doctorId/accept', async (req, res) => {
       createdAt: now,
     });
 
+    if (supabase && doctorId) {
+      try {
+        await supabase.from('doctor_notifications').insert({
+          doctor_id: doctorId,
+          patient_id: patient.id || patient._id,
+          patient_name: patient.name || 'Patient',
+          status: 'accepted',
+          requested_date: now.toISOString(),
+          read: false,
+        });
+        console.log(`[ACCESS RECORD CREATED] doctor_notifications record created for doctorId=${doctorId}`);
+      } catch (dnErr) {
+        console.error('[ACCESS RECORD CREATED] doctor_notifications insert warning:', dnErr.message);
+      }
+    }
+
     await patient.save();
+    console.log(`[ACCESS APPROVED] Access request successfully approved for doctorId=${doctorId}. Session active.`);
 
     return res.json({
       message: 'Doctor access approved. Session started.',
       status: 'approved',
     });
   } catch (err) {
+    console.error('[ACCESS ACCEPT ERROR]:', err);
     return res.status(500).json({ error: err.message });
   }
 });
@@ -321,9 +353,11 @@ router.post('/access-requests/:doctorId/reject', async (req, res) => {
   try {
     let phone = normalizePhone(req.user.phone);
     const { doctorId } = req.params;
+    console.log(`[ACCESS REJECT] Patient phone=${phone} processing reject for doctorId=${doctorId}`);
 
     const patient = await Patient.findOne({ phone });
     if (!patient) {
+      console.warn(`[ACCESS REJECT] Patient not found for phone=${phone}`);
       return res.status(404).json({ error: 'Patient not found' });
     }
 
@@ -338,6 +372,7 @@ router.post('/access-requests/:doctorId/reject', async (req, res) => {
     );
 
     if (reqIndex === -1) {
+      console.warn(`[ACCESS REJECT] Request not found for doctorId=${doctorId}`);
       return res.status(404).json({ error: 'Access request not found' });
     }
 
@@ -346,23 +381,30 @@ router.post('/access-requests/:doctorId/reject', async (req, res) => {
     patient.accessRequests[reqIndex].respondedAt = now;
 
     const targetArId = patient.accessRequests[reqIndex]._id || patient.accessRequests[reqIndex].id;
-    if (targetArId) {
-      await supabase
-        .from('access_requests')
-        .update({
-          status: 'rejected',
-          responded_at: now.toISOString(),
-        })
-        .eq('id', targetArId);
+    if (targetArId && supabase) {
+      try {
+        await supabase
+          .from('access_requests')
+          .update({
+            status: 'rejected',
+            responded_at: now.toISOString(),
+          })
+          .eq('id', targetArId);
+        console.log(`[ACCESS REJECT] Supabase access_requests record ${targetArId} updated to rejected.`);
+      } catch (subErr) {
+        console.error('[ACCESS REJECT] Supabase update warning:', subErr.message);
+      }
     }
 
     await patient.save();
+    console.log(`[ACCESS REJECT] Access request rejected for doctorId=${doctorId}.`);
 
     return res.json({
       message: 'Access request rejected.',
       status: 'rejected',
     });
   } catch (err) {
+    console.error('[ACCESS REJECT ERROR]:', err);
     return res.status(500).json({ error: err.message });
   }
 });

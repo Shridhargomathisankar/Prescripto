@@ -115,29 +115,34 @@ router.get('/dashboard-counts', async (req, res) => {
     }
 
     const doctorId = doctor._id;
+    const doctorIdStr = String(doctorId);
 
-    // Unique patients: ever had a session (approved or closed) AND at least one prescription by this doctor
-    const patientsWithAccess = await Patient.find({
-      'accessRequests.doctorId': doctorId,
-      $or: [
-        { 'accessRequests.status': 'approved' },
-        { 'accessRequests.status': 'closed' },
-      ],
-    });
+    const getDocIdStr = (d) => {
+      if (!d) return '';
+      if (typeof d === 'object') return String(d._id || d.id || '');
+      return String(d);
+    };
+
+    // Unique patients: ever had a session (approved or closed) OR at least one prescription by this doctor
+    const allPatients = await Patient.find({});
     const totalPatients = new Set();
-    for (const p of patientsWithAccess) {
+    for (const p of allPatients) {
       const hasPrescriptionFromDoctor = (p.prescriptions || []).some(
-        (pr) => pr.doctorId && pr.doctorId.toString() === doctorId.toString()
+        (pr) => pr.doctorId && String(pr.doctorId) === doctorIdStr
       );
-      if (hasPrescriptionFromDoctor) totalPatients.add(p._id.toString());
+      const hasApprovedOrClosedSession = (p.accessRequests || []).some(
+        (r) => getDocIdStr(r.doctorId) === doctorIdStr && (r.status === 'approved' || r.status === 'accepted' || r.status === 'closed')
+      );
+      if (hasPrescriptionFromDoctor || hasApprovedOrClosedSession) {
+        totalPatients.add(p._id ? String(p._id) : String(p.id));
+      }
     }
 
     // Total prescriptions created by this doctor (across all patients)
     let prescriptionsGiven = 0;
-    const allPatients = await Patient.find({});
     for (const p of allPatients) {
       const count = (p.prescriptions || []).filter(
-        (pr) => pr.doctorId && pr.doctorId.toString() === doctorId.toString()
+        (pr) => pr.doctorId && String(pr.doctorId) === doctorIdStr
       ).length;
       prescriptionsGiven += count;
     }
@@ -249,6 +254,7 @@ router.post('/patients/:patientId/request-access', async (req, res) => {
     if (!patient) {
       return res.status(404).json({ error: 'Patient not found' });
     }
+    console.log(`[ACCESS REQUEST] Doctor ${doctor.name} (${doctor._id}) requesting access for patientId=${patientId}`);
 
     const getDocIdStr = (d) => {
       if (!d) return '';
@@ -465,58 +471,63 @@ router.get('/patients-list', async (req, res) => {
       return res.status(404).json({ error: 'Doctor not found' });
     }
     const doctorId = doctor._id;
+    const doctorIdStr = String(doctorId);
     const now = new Date();
 
-    const patients = await Patient.find({
-      'accessRequests.doctorId': doctorId,
-      $or: [
-        { 'accessRequests.status': 'approved' },
-        { 'accessRequests.status': 'closed' },
-      ],
-    })
-      .select('patientId name age prescriptions accessRequests')
-      .lean();
+    const getDocIdStr = (d) => {
+      if (!d) return '';
+      if (typeof d === 'object') return String(d._id || d.id || '');
+      return String(d);
+    };
 
-    const list = patients
-      .filter((p) => {
-        const hasRx = (p.prescriptions || []).some(
-          (pr) => pr.doctorId && pr.doctorId.toString() === doctorId.toString()
-        );
-        return hasRx;
-      })
-      .map((p) => {
-        const requests = (p.accessRequests || []).filter(
-          (r) => r.doctorId && r.doctorId.toString() === doctorId.toString()
-        );
-        let accessStatus = 'none';
-        for (const r of requests) {
-          if (
-            r.status === 'approved' &&
-            r.autoCloseAt &&
-            now < new Date(r.autoCloseAt)
-          ) {
-            accessStatus = 'approved';
-            break;
-          }
+    const allPatients = await Patient.find({}).lean();
+    console.log(`[DOCTOR PATIENTS FETCH] Doctor phone=${req.user.phone} fetching patients list. Total DB patients=${allPatients.length}`);
+
+    const list = [];
+    for (const p of allPatients) {
+      const requests = (p.accessRequests || []).filter(
+        (r) => getDocIdStr(r.doctorId) === doctorIdStr
+      );
+      const hasRx = (p.prescriptions || []).some(
+        (pr) => pr.doctorId && String(pr.doctorId) === doctorIdStr
+      );
+
+      let accessStatus = 'none';
+      for (const r of requests) {
+        if (
+          (r.status === 'approved' || r.status === 'accepted') &&
+          r.autoCloseAt &&
+          now < new Date(r.autoCloseAt)
+        ) {
+          accessStatus = 'approved';
+          break;
         }
-        if (accessStatus === 'none' && requests.length) {
-          const latest = requests.sort(
-            (a, b) =>
-              new Date(b.requestedAt || 0) - new Date(a.requestedAt || 0)
-          )[0];
-          if (latest.status === 'pending') accessStatus = 'pending';
-          else if (latest.status === 'rejected') accessStatus = 'rejected';
-        }
-        return {
+      }
+
+      if (accessStatus === 'none' && requests.length) {
+        const latest = requests.sort(
+          (a, b) => new Date(b.requestedAt || 0) - new Date(a.requestedAt || 0)
+        )[0];
+        if (latest.status === 'pending') accessStatus = 'pending';
+        else if (latest.status === 'rejected') accessStatus = 'rejected';
+      }
+
+      // Return patient if access is approved or pending, OR doctor has written prescriptions for patient
+      if (accessStatus === 'approved' || accessStatus === 'pending' || hasRx) {
+        list.push({
           patientId: p.patientId,
           name: p.name,
           age: p.age,
           accessStatus,
-        };
-      });
+          activeSession: { status: accessStatus === 'approved' ? 'active' : 'none' },
+        });
+      }
+    }
 
+    console.log(`[DOCTOR PATIENTS FETCH] Returned ${list.length} patient(s) for doctor ${doctorIdStr}`);
     return res.json(list);
   } catch (err) {
+    console.error('[DOCTOR PATIENTS FETCH ERROR]:', err);
     return res.status(500).json({ error: err.message });
   }
 });

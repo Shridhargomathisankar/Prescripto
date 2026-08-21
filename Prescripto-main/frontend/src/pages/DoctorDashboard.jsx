@@ -471,20 +471,33 @@ export default function DoctorDashboard() {
 
   const refreshDoctorData = useCallback(async () => {
     refreshDoctorCounts();
-    if (patient?.patientId) {
-      try {
-        const token = await getToken();
-        if (token) {
-          const data = await api.doctors.getPatient(token, patient.patientId);
-          setPatient(data);
+    try {
+      const token = await getToken();
+      if (token) {
+        const [patientsData, currentPatientData] = await Promise.all([
+          api.doctors.patientsList(token),
+          patient?.patientId ? api.doctors.getPatient(token, patient.patientId).catch(() => null) : Promise.resolve(null),
+        ]);
+        if (Array.isArray(patientsData)) {
+          setPatientsList(patientsData);
         }
-      } catch (_) {}
-    }
+        if (currentPatientData) {
+          setPatient(currentPatientData);
+        }
+      }
+    } catch (_) {}
   }, [doctor, patient?.patientId, refreshDoctorCounts, getToken]);
 
-  /* Load dashboard counts when doctor is ready */
+  /* Load dashboard counts and patient list when doctor is ready */
   useEffect(() => {
     refreshDoctorData();
+  }, [refreshDoctorData]);
+
+  // Refetch on window focus to catch external patient approvals immediately
+  useEffect(() => {
+    const onFocus = () => refreshDoctorData();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [refreshDoctorData]);
 
   // Realtime Supabase Subscription for Doctor Dashboard
@@ -522,6 +535,27 @@ export default function DoctorDashboard() {
     })();
   }, [doctor, view, getToken]);
 
+  /* Single-click Direct Patient Record Access */
+  const openPatientRecords = async (targetPatientId) => {
+    if (!targetPatientId) return;
+    const cleanId = String(targetPatientId).trim().toUpperCase();
+    setPatientId(cleanId);
+    setSearchError(null);
+    setSearchLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const data = await api.doctors.getPatient(token, cleanId);
+      setPatient(data);
+      setShowAddForm(false);
+      setView('dashboard');
+    } catch (err) {
+      setSearchError(err.message || t('patientNotFound') || 'Failed to load patient records');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   /* =========================
      SEARCH PATIENT
   ========================= */
@@ -532,18 +566,7 @@ export default function DoctorDashboard() {
     const id = patientId.trim().toUpperCase();
     if (!id) return;
 
-    setSearchLoading(true);
-    try {
-      const token = await getToken();
-      const data = await api.doctors.getPatient(token, id);
-      setPatient(data);
-      setShowAddForm(false);
-    } catch (err) {
-      setSearchError(err.message || t('patientNotFound'));
-      setPatient(null);
-    } finally {
-      setSearchLoading(false);
-    }
+    await openPatientRecords(id);
   };
 
   /* =========================
@@ -756,6 +779,70 @@ export default function DoctorDashboard() {
                 t={t}
               />
 
+              {/* Homepage Approved Patients & Active Sessions Cards Section */}
+              {view === 'dashboard' && !patient && (
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                        🏥
+                      </span>
+                      <h2 className="text-lg font-bold text-slate-800">
+                        {t('approvedPatients') || 'Approved Patients & Active Sessions'}
+                      </h2>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200">
+                      {patientsList.filter((p) => p.accessStatus === 'approved' || p.activeSession?.status === 'active').length} Active
+                    </span>
+                  </div>
+
+                  {patientsList.filter((p) => p.accessStatus === 'approved' || p.activeSession?.status === 'active').length === 0 ? (
+                    <div className="bg-slate-50/80 rounded-xl border border-dashed border-slate-200 p-6 text-center text-slate-400 text-xs">
+                      No active approved patient sessions right now. Enter a Patient ID in the search box above to request access.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {patientsList
+                        .filter((p) => p.accessStatus === 'approved' || p.activeSession?.status === 'active')
+                        .map((p) => (
+                          <div
+                            key={p.patientId}
+                            className="bg-gradient-to-br from-emerald-50/40 via-white to-slate-50 border border-emerald-200/80 rounded-2xl p-4.5 space-y-3 shadow-2xs hover:shadow-xs transition"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h3 className="font-bold text-slate-900 text-base">{p.name}</h3>
+                                <p className="text-xs text-slate-500 font-mono mt-0.5">Patient ID: {p.patientId}</p>
+                                {p.age && <p className="text-xs text-slate-600 mt-0.5">Age: {p.age} yrs</p>}
+                              </div>
+                              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                                Session Active
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2 border-t border-emerald-100/80">
+                              <Button
+                                type="button"
+                                onClick={() => openPatientRecords(p.patientId)}
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 px-3 rounded-xl shadow-2xs font-bold"
+                              >
+                                👁️ View Records
+                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => openPatientRecords(p.patientId)}
+                                className="px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+                              >
+                                📄 Prescriptions
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* Patients list screen */}
               {view === 'patients' && (
                 <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -767,15 +854,23 @@ export default function DoctorDashboard() {
                   ) : (
                     <ul className="space-y-3">
                       {patientsList.map((p) => (
-                        <li key={p.patientId} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <li key={p.patientId} className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 shadow-2xs hover:shadow-xs transition">
                           <div>
-                            <span className="font-medium text-slate-800">{p.name}</span>
-                            <span className="text-slate-500 text-sm ml-2">ID: {p.patientId}</span>
-                            {p.activeSession?.status === 'active' && (
-                              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Session active</span>
-                            )}
+                            <span className="font-semibold text-slate-800">{p.name}</span>
+                            <span className="text-slate-500 text-xs font-mono ml-2">ID: {p.patientId}</span>
+                            {(p.accessStatus === 'approved' || p.activeSession?.status === 'active') ? (
+                              <span className="ml-2 text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                Session Active
+                              </span>
+                            ) : p.accessStatus === 'pending' ? (
+                              <span className="ml-2 text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full border border-amber-200">
+                                Access Pending
+                              </span>
+                            ) : null}
                           </div>
-                          <button type="button" onClick={() => { setPatientId(p.patientId); setView('dashboard'); }} className="text-blue-600 text-sm font-medium hover:underline">{t('view')}</button>
+                          <button type="button" onClick={() => openPatientRecords(p.patientId)} className="text-blue-600 text-sm font-semibold hover:underline">
+                            {t('view') || 'View Records'}
+                          </button>
                         </li>
                       ))}
                     </ul>

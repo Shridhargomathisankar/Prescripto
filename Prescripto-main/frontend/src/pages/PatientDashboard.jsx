@@ -61,6 +61,7 @@ export default function PatientDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [medicineRequests, setMedicineRequests] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
 
@@ -69,7 +70,6 @@ export default function PatientDashboard() {
     if (!pid) return;
     try {
       navigator.clipboard.writeText(pid);
-      setToastMessage('Patient ID copied.');
     } catch {
       const el = document.createElement('textarea');
       el.value = pid;
@@ -77,9 +77,9 @@ export default function PatientDashboard() {
       el.select();
       document.execCommand('copy');
       document.body.removeChild(el);
-      setToastMessage('Patient ID copied.');
     }
-    setTimeout(() => setToastMessage(''), 2500);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2500);
   };
 
   const fetchPatientData = useCallback(async () => {
@@ -335,13 +335,26 @@ export default function PatientDashboard() {
           <button
             type="button"
             onClick={handleCopyPatientId}
-            className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-xs text-white font-medium transition flex items-center gap-1 shadow-xs"
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs ${
+              copiedId
+                ? 'bg-emerald-500 text-white font-bold ring-2 ring-emerald-300'
+                : 'bg-white/20 hover:bg-white/30 text-white font-medium'
+            }`}
             title="Copy Patient ID"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Copy
+            {copiedId ? (
+              <>
+                <span className="font-bold">✓</span>
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Copy</span>
+              </>
+            )}
           </button>
         </div>
       </section>

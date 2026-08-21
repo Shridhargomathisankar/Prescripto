@@ -50,6 +50,34 @@ export default function RequestsScreen({
     }
   };
 
+  const [localStatuses, setLocalStatuses] = useState({});
+
+  const handleAcceptClick = async (item) => {
+    const docId = item.raw?.doctorId?._id || item.raw?.doctorId?.id || item.raw?.doctorId;
+    const reqId = item.id;
+    setLocalStatuses((prev) => ({
+      ...prev,
+      [reqId]: 'approved',
+      [docId]: 'approved',
+    }));
+    if (onAcceptAccessRequest) {
+      await onAcceptAccessRequest(docId);
+    }
+  };
+
+  const handleRejectClick = async (item) => {
+    const docId = item.raw?.doctorId?._id || item.raw?.doctorId?.id || item.raw?.doctorId;
+    const reqId = item.id;
+    setLocalStatuses((prev) => ({
+      ...prev,
+      [reqId]: 'rejected',
+      [docId]: 'rejected',
+    }));
+    if (onRejectAccessRequest) {
+      await onRejectAccessRequest(docId);
+    }
+  };
+
   const allRequests = [
     ...(accessRequests || []).map((r) => ({
       id: r._id || r.id,
@@ -80,19 +108,27 @@ export default function RequestsScreen({
     })),
   ];
 
+  const getEffectiveStatus = (item) => {
+    const reqId = item.id;
+    const docId = item.raw?.doctorId?._id || item.raw?.doctorId?.id || item.raw?.doctorId;
+    return localStatuses[reqId] || (docId ? localStatuses[docId] : null) || item.status;
+  };
+
   const pendingList = allRequests.filter(
-    (r) => r.status === 'pending' || r.status === 'rescheduled'
+    (r) => getEffectiveStatus(r) === 'pending' || getEffectiveStatus(r) === 'rescheduled'
   );
-  const completedList = allRequests.filter(
-    (r) =>
-      r.status === 'approved' ||
-      r.status === 'accepted' ||
-      r.status === 'ready' ||
-      r.status === 'picked_up' ||
-      r.status === 'delivered' ||
-      r.status === 'closed' ||
-      r.status === 'rejected'
-  );
+  const completedList = allRequests.filter((r) => {
+    const st = getEffectiveStatus(r);
+    return (
+      st === 'approved' ||
+      st === 'accepted' ||
+      st === 'ready' ||
+      st === 'picked_up' ||
+      st === 'delivered' ||
+      st === 'closed' ||
+      st === 'rejected'
+    );
+  });
 
   const displayList = tab === 'pending' ? pendingList : completedList;
 
@@ -118,8 +154,8 @@ export default function RequestsScreen({
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-6">
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-6 border-b border-slate-200">
         <button
           type="button"
           onClick={() => setTab('pending')}
@@ -153,69 +189,75 @@ export default function RequestsScreen({
               : t('noCompletedRequestsFound') || 'No completed requests found.'}
           </div>
         ) : (
-          displayList.map((item) => (
-            <div
-              key={`${item.typeKey}-${item.id}`}
-              className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 mt-0.5">
-                  {item.typeKey === 'doctor_access' ? '🩺' : item.typeKey === 'medicine' ? '📦' : '📅'}
-                </div>
-                <div>
-                  <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full">
-                    {getTypeLabel(item.typeKey)}
-                  </span>
-                  <h3 className="font-semibold text-slate-800 text-sm mt-1">{item.title}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{item.subtitle}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {item.date ? new Date(item.date).toLocaleString() : ''}
-                  </p>
-                </div>
-              </div>
+          displayList.map((item) => {
+            const st = getEffectiveStatus(item);
+            const isApproved = st === 'approved' || st === 'accepted';
+            const isRejected = st === 'rejected';
 
-              <div className="flex items-center gap-2">
-                {item.typeKey === 'doctor_access' && item.status === 'pending' ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onRejectAccessRequest &&
-                        onRejectAccessRequest(item.raw?.doctorId?._id || item.raw?.doctorId?.id || item.raw?.doctorId)
-                      }
-                      className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            return (
+              <div
+                key={`${item.typeKey}-${item.id}`}
+                className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0 mt-0.5">
+                    {item.typeKey === 'doctor_access' ? '🩺' : item.typeKey === 'medicine' ? '📦' : '📅'}
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-full">
+                      {getTypeLabel(item.typeKey)}
+                    </span>
+                    <h3 className="font-semibold text-slate-800 text-sm mt-1">{item.title}</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{item.subtitle}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {item.date ? new Date(item.date).toLocaleString() : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {item.typeKey === 'doctor_access' && st === 'pending' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectClick(item)}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                      >
+                        {t('reject') || 'Reject'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptClick(item)}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-xs transition"
+                      >
+                        {t('accept') || 'Accept'}
+                      </button>
+                    </>
+                  ) : isApproved ? (
+                    <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs flex items-center gap-1">
+                      ✓ Accepted
+                    </span>
+                  ) : isRejected ? (
+                    <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs flex items-center gap-1">
+                      ✕ Rejected
+                    </span>
+                  ) : (
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        st === 'ready'
+                          ? 'bg-sky-100 text-sky-700'
+                          : st === 'pending'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
                     >
-                      {t('reject') || 'Reject'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onAcceptAccessRequest &&
-                        onAcceptAccessRequest(item.raw?.doctorId?._id || item.raw?.doctorId?.id || item.raw?.doctorId)
-                      }
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 shadow-xs transition"
-                    >
-                      {t('accept') || 'Accept'}
-                    </button>
-                  </>
-                ) : (
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      item.status === 'approved' || item.status === 'accepted' || item.status === 'delivered'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : item.status === 'ready'
-                        ? 'bg-sky-100 text-sky-700'
-                        : item.status === 'pending'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {formatStatusText(item.status)}
-                  </span>
-                )}
+                      {formatStatusText(st)}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
