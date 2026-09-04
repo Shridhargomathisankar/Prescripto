@@ -7,7 +7,7 @@ const DEMO_OTP = '262626';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [firebaseToken, setFirebaseToken] = useState(null);
+  const [token, setToken] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -43,10 +43,10 @@ export function AuthProvider({ children }) {
   const persistAuth = useCallback(
     (role, userObj, idToken) => {
       if (!role || !userObj) return;
-      const token = idToken || `demo-token-${userObj.phone || '9999999999'}`;
+      const authToken = idToken || `demo-token-${userObj.phone || '9999999999'}`;
       setUser({ role, ...userObj });
-      setFirebaseToken(token);
-      writeStoredAuth(role, userObj, token);
+      setToken(authToken);
+      writeStoredAuth(role, userObj, authToken);
     },
     [writeStoredAuth]
   );
@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
     const stored = readStoredAuth();
     if (stored && stored.role && stored.user) {
       setUser({ role: stored.role, ...stored.user });
-      setFirebaseToken(stored.idToken || `demo-token-${stored.user.phone || ''}`);
+      setToken(stored.idToken || `demo-token-${stored.user.phone || ''}`);
     }
     setAuthReady(true);
   }, [readStoredAuth]);
@@ -184,20 +184,22 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     clearStoredAuth();
     setUser(null);
-    setFirebaseToken(null);
+    setToken(null);
   }, [clearStoredAuth]);
 
   const getToken = useCallback(async () => {
-    if (firebaseToken) return firebaseToken;
+    if (token) return token;
     const stored = readStoredAuth();
     return stored?.idToken || null;
-  }, [firebaseToken, readStoredAuth]);
+  }, [token, readStoredAuth]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        firebaseToken,
+        token,
+        authToken: token,
+        firebaseToken: token,
         authReady,
         loading,
         error,

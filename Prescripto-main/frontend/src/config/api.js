@@ -1,18 +1,21 @@
-import { auth } from './firebase';
-
 const API_BASE = '/api';
+
+function getStoredToken() {
+  try {
+    const raw = localStorage.getItem('prescripto_auth_v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.idToken || null;
+  } catch {
+    return null;
+  }
+}
 
 async function request(path, options = {}) {
   const { token, ...rest } = options;
   const isProtected = !path.startsWith('/auth/');
-  let resolvedToken = token || null;
-  if (!resolvedToken && isProtected && auth.currentUser) {
-    try {
-      resolvedToken = await auth.currentUser.getIdToken(true);
-    } catch {
-      resolvedToken = null;
-    }
-  }
+  const resolvedToken = token || (isProtected ? getStoredToken() : null);
+
   const headers = {
     'Content-Type': 'application/json',
     ...(resolvedToken && { Authorization: `Bearer ${resolvedToken}` }),
