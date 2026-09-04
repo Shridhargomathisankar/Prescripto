@@ -1,4 +1,10 @@
-const API_BASE = '/api';
+// Prescripto Central API Configuration
+const RAW_BACKEND = import.meta.env.VITE_BACKEND_URL || 'https://prescripto-rnpq.onrender.com';
+export const BACKEND_URL = RAW_BACKEND.replace(/\/+$/, '');
+export const API_BASE = `${BACKEND_URL}/api`;
+
+console.log('[AUTH] Backend URL:', BACKEND_URL);
+console.log('[AUTH] API Base:', API_BASE);
 
 function getStoredToken() {
   try {
@@ -12,8 +18,10 @@ function getStoredToken() {
 }
 
 async function request(path, options = {}) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const fullUrl = `${API_BASE}${normalizedPath}`;
   const { token, ...rest } = options;
-  const isProtected = !path.startsWith('/auth/');
+  const isProtected = !normalizedPath.startsWith('/auth/');
   const resolvedToken = token || (isProtected ? getStoredToken() : null);
 
   const headers = {
@@ -21,7 +29,12 @@ async function request(path, options = {}) {
     ...(resolvedToken && { Authorization: `Bearer ${resolvedToken}` }),
     ...options.headers,
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...rest, headers });
+
+  if (normalizedPath.startsWith('/auth/')) {
+    console.log('[AUTH] Auth Request:', fullUrl);
+  }
+
+  const res = await fetch(fullUrl, { ...rest, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || data.error || res.statusText);
   return data;
@@ -136,24 +149,6 @@ export const api = {
       }),
   },
 
-  voice: {
-    stt: (formData) =>
-      fetch('/api/voice/stt', {
-        method: 'POST',
-        body: formData,
-      }).then(res => {
-        if (!res.ok) throw new Error('STT failed');
-        return res.json();
-      }),
-    intent: (token, text) =>
-      request('/voice/intent', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({ text }),
-      }),
-  },
-  
-
   doctors: {
     me: (token) => request('/doctors/me', { token }),
     updateMe: (token, body) =>
@@ -266,22 +261,30 @@ export const api = {
   },
 
   voice: {
-    transcribe: async (audioBlob, lang) => {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      if (lang) formData.append('lang', lang);
-      const res = await fetch('/api/voice/transcribe', {
+    stt: (formData) =>
+      fetch(`${API_BASE}/voice/stt`, {
         method: 'POST',
         body: formData,
-      });
-      return res.json().catch(() => ({ success: false, error: 'TRANSCRIPTION_ERROR' }));
-    },
+      }).then(res => {
+        if (!res.ok) throw new Error('STT failed');
+        return res.json();
+      }),
     intent: (token, text) =>
       request('/voice/intent', {
         method: 'POST',
         token,
         body: JSON.stringify({ text }),
       }),
+    transcribe: async (audioBlob, lang) => {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      if (lang) formData.append('lang', lang);
+      const res = await fetch(`${API_BASE}/voice/transcribe`, {
+        method: 'POST',
+        body: formData,
+      });
+      return res.json().catch(() => ({ success: false, error: 'TRANSCRIPTION_ERROR' }));
+    },
     chat: (token, body) =>
       request('/voice/chat', {
         method: 'POST',
