@@ -190,19 +190,24 @@ export const Pharmacy = {
   },
 
   async create(data) {
+    const insertData = {
+      phone: data.phone ? String(data.phone).trim() : '',
+      name: String(data.name || '').trim(),
+      pharmacy_name: String(data.pharmacyName || '').trim(),
+      location: data.location ? String(data.location).trim() : '',
+    };
+
+    if (data.email && String(data.email).trim()) {
+      insertData.email = String(data.email).trim().toLowerCase();
+    }
+
     const { data: newPharm, error } = await supabase
       .from('pharmacies')
-      .insert({
-        phone: data.phone || '',
-        email: data.email || '',
-        name: data.name,
-        pharmacy_name: data.pharmacyName,
-        location: data.location || '',
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(`Pharmacy creation failed: ${error.message}`);
     return await fetchPharmacyDetails(newPharm);
   },
 

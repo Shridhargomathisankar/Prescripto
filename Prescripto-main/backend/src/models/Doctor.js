@@ -161,17 +161,17 @@ export const Doctor = {
     const { data: newDoctor, error } = await supabase
       .from('doctors')
       .insert({
-        phone: data.phone,
-        name: data.name,
-        clinic_name: data.clinicName,
-        specialization: data.specialization || '',
+        phone: String(data.phone).trim(),
+        name: String(data.name).trim(),
+        clinic_name: String(data.clinicName).trim(),
+        specialization: data.specialization ? String(data.specialization).trim() : '',
         experience: Number(data.experience) || 0,
-        location: data.location || '',
+        location: data.location ? String(data.location).trim() : '',
       })
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(`Doctor creation failed: ${error.message}`);
     return await fetchDoctorDetails(newDoctor);
   },
 

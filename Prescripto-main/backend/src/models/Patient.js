@@ -505,15 +505,15 @@ export const Patient = {
     const { data: newPatient, error } = await supabase
       .from('patients')
       .insert({
-        patient_id: data.patientId,
-        phone: data.phone,
-        name: data.name,
+        patient_id: String(data.patientId).trim(),
+        phone: String(data.phone).trim(),
+        name: String(data.name).trim(),
         age: Number(data.age),
-        blood_group: data.bloodGroup || null,
-        medical_info: data.medicalInfo || null,
-        gender: data.gender || '',
-        location: data.location || '',
-        language: data.language || 'en',
+        blood_group: data.bloodGroup ? String(data.bloodGroup).trim() : null,
+        medical_info: data.medicalInfo ? String(data.medicalInfo).trim() : null,
+        gender: data.gender ? String(data.gender).trim() : '',
+        location: data.location ? String(data.location).trim() : '',
+        language: data.language ? String(data.language).trim() : 'en',
         reminder_settings: data.reminderSettings || {
           morningTime: '10:00',
           afternoonTime: '13:00',

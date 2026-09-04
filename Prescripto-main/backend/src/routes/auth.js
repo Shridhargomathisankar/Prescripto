@@ -20,8 +20,8 @@ function normalizePhone(phone) {
  */
 router.post('/verify', async (req, res) => {
   try {
-    const { idToken, phone: reqPhone } = req.body;
-    console.log('[AUTH VERIFY] Verification request received.');
+    console.log('[AUTH VERIFY] Incoming Body:', req.body);
+    const { idToken, phone: reqPhone } = req.body || {};
 
     if (!idToken && !reqPhone) {
       console.warn('[AUTH VERIFY] 400 Bad Request: Missing idToken and phone.');
@@ -31,7 +31,6 @@ router.post('/verify', async (req, res) => {
     const isDemoToken =
       typeof idToken === 'string' &&
       (idToken.startsWith('demo-') || idToken.startsWith('demo_') || idToken === 'demo-token');
-    console.log(`[AUTH VERIFY] Demo token detected: ${isDemoToken}`);
 
     let decoded = {};
     if (idToken) {
@@ -60,11 +59,10 @@ router.post('/verify', async (req, res) => {
     const maskedPhone = phone && phone.length >= 10
       ? `${phone.slice(0, 2)}****${phone.slice(-4)}`
       : phone || 'N/A';
-    console.log(`[AUTH VERIFY] Phone format: ${maskedPhone}`);
+    console.log(`[AUTH VERIFY] Phone: ${maskedPhone}, Email: ${email || 'N/A'}`);
 
     // 1. PATIENT CHECK
     if (phone) {
-      console.log('[AUTH VERIFY] Checking Patients table...');
       const patient = await Patient.findOne({ phone }).catch((err) => {
         console.error('[AUTH VERIFY] Patient lookup error:', err.message);
         return null;
@@ -81,7 +79,6 @@ router.post('/verify', async (req, res) => {
 
     // 2. DOCTOR CHECK
     if (phone) {
-      console.log('[AUTH VERIFY] Checking Doctors table...');
       const doctor = await Doctor.findOne({ phone }).catch((err) => {
         console.error('[AUTH VERIFY] Doctor lookup error:', err.message);
         return null;
@@ -99,14 +96,12 @@ router.post('/verify', async (req, res) => {
     // 3. PHARMACY CHECK (by phone or email)
     let pharmacy = null;
     if (phone) {
-      console.log('[AUTH VERIFY] Checking Pharmacies table by phone...');
       pharmacy = await Pharmacy.findOne({ phone }).catch((err) => {
         console.error('[AUTH VERIFY] Pharmacy lookup error:', err.message);
         return null;
       });
     }
     if (!pharmacy && email) {
-      console.log('[AUTH VERIFY] Checking Pharmacies table by email...');
       pharmacy = await Pharmacy.findOne({ email }).catch((err) => {
         console.error('[AUTH VERIFY] Pharmacy email lookup error:', err.message);
         return null;
@@ -129,8 +124,8 @@ router.post('/verify', async (req, res) => {
       isNew: true,
     });
   } catch (err) {
-    console.error('[AUTH VERIFY] Internal Server Error:', err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('[AUTH VERIFY ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -141,36 +136,51 @@ router.post('/verify', async (req, res) => {
  */
 router.post('/register-patient', async (req, res) => {
   try {
-    let { idToken, name, age, phone, bloodGroup, medicalInfo } = req.body;
+    console.log('[REGISTER PATIENT] Incoming Body:', req.body);
+    let { idToken, name, age, phone, bloodGroup, medicalInfo } = req.body || {};
 
     if (!name || age == null || !phone) {
+      console.warn('[REGISTER PATIENT] Validation failed: missing name, age, or phone');
       return res.status(400).json({
         error: 'name, age, phone required',
       });
     }
 
-    phone = normalizePhone(phone);
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone || cleanPhone.length < 10) {
+      console.warn('[REGISTER PATIENT] Validation failed: invalid phone');
+      return res.status(400).json({ error: 'Valid 10-digit phone required' });
+    }
 
-    const existing = await Patient.findOne({ phone });
+    const existing = await Patient.findOne({ phone: cleanPhone }).catch((err) => {
+      console.error('[REGISTER PATIENT] Patient findOne error:', err.message);
+      return null;
+    });
+
     if (existing) {
+      console.warn(`[REGISTER PATIENT] Phone ${cleanPhone} already registered`);
       return res.status(400).json({
         error: 'Phone already registered as patient',
       });
     }
 
-    const patientId = await generateUniquePatientId(name);
+    const cleanName = String(name).trim();
+    const patientId = await generateUniquePatientId(cleanName);
+    console.log(`[REGISTER PATIENT] Generated patientId: ${patientId}`);
 
     const patient = await Patient.create({
       patientId,
-      phone,
-      name: name.trim(),
+      phone: cleanPhone,
+      name: cleanName,
       age: Number(age),
-      bloodGroup: bloodGroup || undefined,
-      medicalInfo: medicalInfo || undefined,
+      bloodGroup: bloodGroup ? String(bloodGroup).trim() : undefined,
+      medicalInfo: medicalInfo ? String(medicalInfo).trim() : undefined,
       prescriptions: [],
       reports: [],
       reminders: [],
     });
+
+    console.log(`[REGISTER PATIENT SUCCESS] Patient created: ${patient._id || patient.id}`);
 
     return res.json({
       role: 'patient',
@@ -178,7 +188,8 @@ router.post('/register-patient', async (req, res) => {
       isNew: true,
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[REGISTER PATIENT ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -189,18 +200,29 @@ router.post('/register-patient', async (req, res) => {
  */
 router.post('/register-doctor', async (req, res) => {
   try {
-    let { idToken, phone, name, clinicName, specialization } = req.body;
+    console.log('[REGISTER DOCTOR] Incoming Body:', req.body);
+    let { idToken, phone, name, clinicName, specialization } = req.body || {};
 
     if (!phone || !name || !clinicName) {
+      console.warn('[REGISTER DOCTOR] Validation failed: missing phone, name, or clinicName');
       return res.status(400).json({
         error: 'phone, name, clinicName required',
       });
     }
 
-    phone = normalizePhone(phone);
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone || cleanPhone.length < 10) {
+      console.warn('[REGISTER DOCTOR] Validation failed: invalid phone');
+      return res.status(400).json({ error: 'Valid 10-digit phone required' });
+    }
 
-    let doctor = await Doctor.findOne({ phone });
+    let doctor = await Doctor.findOne({ phone: cleanPhone }).catch((err) => {
+      console.error('[REGISTER DOCTOR] Doctor findOne error:', err.message);
+      return null;
+    });
+
     if (doctor) {
+      console.log(`[REGISTER DOCTOR] Phone ${cleanPhone} already registered as doctor`);
       return res.json({
         role: 'doctor',
         user: doctor,
@@ -209,11 +231,13 @@ router.post('/register-doctor', async (req, res) => {
     }
 
     doctor = await Doctor.create({
-      phone,
-      name: name.trim(),
-      clinicName: clinicName.trim(),
-      specialization: specialization?.trim() || '',
+      phone: cleanPhone,
+      name: String(name).trim(),
+      clinicName: String(clinicName).trim(),
+      specialization: specialization ? String(specialization).trim() : '',
     });
+
+    console.log(`[REGISTER DOCTOR SUCCESS] Doctor created: ${doctor._id || doctor.id}`);
 
     return res.json({
       role: 'doctor',
@@ -221,7 +245,8 @@ router.post('/register-doctor', async (req, res) => {
       isNew: true,
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[REGISTER DOCTOR ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -232,18 +257,29 @@ router.post('/register-doctor', async (req, res) => {
  */
 router.post('/register-pharmacy', async (req, res) => {
   try {
-    let { idToken, phone, name, pharmacyName, location } = req.body;
+    console.log('[REGISTER PHARMACY] Incoming Body:', req.body);
+    let { idToken, phone, name, pharmacyName, location } = req.body || {};
 
     if (!phone || !name || !pharmacyName) {
+      console.warn('[REGISTER PHARMACY] Validation failed: missing phone, name, or pharmacyName');
       return res.status(400).json({
         error: 'phone, name, pharmacyName required',
       });
     }
 
-    phone = normalizePhone(phone);
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone || cleanPhone.length < 10) {
+      console.warn('[REGISTER PHARMACY] Validation failed: invalid phone');
+      return res.status(400).json({ error: 'Valid 10-digit phone required' });
+    }
 
-    let pharmacy = await Pharmacy.findOne({ phone });
+    let pharmacy = await Pharmacy.findOne({ phone: cleanPhone }).catch((err) => {
+      console.error('[REGISTER PHARMACY] Pharmacy findOne error:', err.message);
+      return null;
+    });
+
     if (pharmacy) {
+      console.log(`[REGISTER PHARMACY] Phone ${cleanPhone} already registered as pharmacy`);
       return res.json({
         role: 'pharmacy',
         user: pharmacy,
@@ -252,12 +288,14 @@ router.post('/register-pharmacy', async (req, res) => {
     }
 
     pharmacy = await Pharmacy.create({
-      phone,
-      name: name.trim(),
-      pharmacyName: pharmacyName.trim(),
-      location: location?.trim() || '',
+      phone: cleanPhone,
+      name: String(name).trim(),
+      pharmacyName: String(pharmacyName).trim(),
+      location: location ? String(location).trim() : '',
       stock: [],
     });
+
+    console.log(`[REGISTER PHARMACY SUCCESS] Pharmacy created: ${pharmacy._id || pharmacy.id}`);
 
     return res.json({
       role: 'pharmacy',
@@ -265,7 +303,8 @@ router.post('/register-pharmacy', async (req, res) => {
       isNew: true,
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[REGISTER PHARMACY ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
@@ -276,31 +315,39 @@ router.post('/register-pharmacy', async (req, res) => {
  */
 router.post('/register-pharmacy-email', async (req, res) => {
   try {
-    let { idToken, email, name, pharmacyName, location } = req.body;
+    console.log('[REGISTER PHARMACY EMAIL] Incoming Body:', req.body);
+    let { idToken, email, name, pharmacyName, location } = req.body || {};
 
     if (!email || !name || !pharmacyName) {
       return res.status(400).json({ error: 'email, name, pharmacyName required' });
     }
 
-    email = String(email).trim().toLowerCase();
+    const cleanEmail = String(email).trim().toLowerCase();
 
-    let pharmacy = await Pharmacy.findOne({ email });
+    let pharmacy = await Pharmacy.findOne({ email: cleanEmail }).catch((err) => {
+      console.error('[REGISTER PHARMACY EMAIL] Pharmacy findOne error:', err.message);
+      return null;
+    });
+
     if (pharmacy) {
       return res.json({ role: 'pharmacy', user: pharmacy, isNew: false });
     }
 
     pharmacy = await Pharmacy.create({
       phone: '',
-      email,
-      name: name.trim(),
-      pharmacyName: pharmacyName.trim(),
-      location: location?.trim() || '',
+      email: cleanEmail,
+      name: String(name).trim(),
+      pharmacyName: String(pharmacyName).trim(),
+      location: location ? String(location).trim() : '',
       stock: [],
     });
 
+    console.log(`[REGISTER PHARMACY EMAIL SUCCESS] Pharmacy created: ${pharmacy._id || pharmacy.id}`);
+
     return res.json({ role: 'pharmacy', user: pharmacy, isNew: true });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error('[REGISTER PHARMACY EMAIL ERROR]', err);
+    return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
 });
 
