@@ -502,31 +502,52 @@ export const Patient = {
   },
 
   async create(data) {
+    const tableName = 'patients';
+    const payload = {
+      patient_id: String(data.patientId).trim(),
+      phone: String(data.phone).trim(),
+      name: String(data.name).trim(),
+      age: Number(data.age),
+      blood_group: data.bloodGroup ? String(data.bloodGroup).trim() : null,
+      medical_info: data.medicalInfo ? String(data.medicalInfo).trim() : null,
+      gender: data.gender ? String(data.gender).trim() : '',
+      location: data.location ? String(data.location).trim() : '',
+      language: data.language ? String(data.language).trim() : 'en',
+      reminder_settings: data.reminderSettings || {
+        morningTime: '10:00',
+        afternoonTime: '13:00',
+        nightTime: '20:00',
+        reminderType: 'notification',
+        alarmTone: 'default',
+        messageTone: 'default',
+      },
+    };
+
+    console.log('[PATIENT CREATE BEFORE INSERT]');
+    console.log('Table Name:', tableName);
+    console.log('Insert Payload:', JSON.stringify(payload, null, 2));
+
     const { data: newPatient, error } = await supabase
-      .from('patients')
-      .insert({
-        patient_id: String(data.patientId).trim(),
-        phone: String(data.phone).trim(),
-        name: String(data.name).trim(),
-        age: Number(data.age),
-        blood_group: data.bloodGroup ? String(data.bloodGroup).trim() : null,
-        medical_info: data.medicalInfo ? String(data.medicalInfo).trim() : null,
-        gender: data.gender ? String(data.gender).trim() : '',
-        location: data.location ? String(data.location).trim() : '',
-        language: data.language ? String(data.language).trim() : 'en',
-        reminder_settings: data.reminderSettings || {
-          morningTime: '10:00',
-          afternoonTime: '13:00',
-          nightTime: '20:00',
-          reminderType: 'notification',
-          alarmTone: 'default',
-          messageTone: 'default',
-        },
-      })
+      .from(tableName)
+      .insert(payload)
       .select()
       .single();
 
-    if (error) throw new Error(`Patient creation failed: ${error.message}`);
+    if (error) {
+      console.error('[PATIENT CREATE ERROR DIAGNOSTICS]');
+      console.error('Table Name:', tableName);
+      console.error('Insert Payload:', payload);
+      console.error('Full Error Object:', error);
+      console.error('error.message:', error.message);
+      console.error('error.code:', error.code);
+      console.error('error.details:', error.details);
+      console.error('error.hint:', error.hint);
+      console.error('JSON Error Stringify:', JSON.stringify(error, null, 2));
+
+      throw new Error(`Patient creation failed: ${error.message || 'Unknown Supabase Error'}`);
+    }
+
+    console.log('[PATIENT CREATE SUCCESS] Inserted record ID:', newPatient?.id);
     return await fetchPatientDetails(newPatient);
   },
 

@@ -10,6 +10,19 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+export function cleanSupabaseUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  let trimmed = rawUrl.trim();
+  trimmed = trimmed.replace(/\/+$/, '');
+  trimmed = trimmed.replace(/\/rest\/v1\/?$/i, '');
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.origin;
+  } catch {
+    return trimmed;
+  }
+}
+
 export function isValidUrl(url) {
   if (typeof url !== 'string') return false;
   const trimmed = url.trim();
@@ -24,7 +37,9 @@ export function isValidKey(key) {
   return trimmed.length > 5;
 }
 
-const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
+const rawUrl = (process.env.SUPABASE_URL || '').trim();
+const supabaseUrl = cleanSupabaseUrl(rawUrl);
+
 const supabaseKey = (
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
@@ -49,7 +64,7 @@ export const supabase =
     : null;
 
 export async function testSupabaseConnection() {
-  const url = (process.env.SUPABASE_URL || '').trim();
+  const url = cleanSupabaseUrl((process.env.SUPABASE_URL || '').trim());
   const key = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||

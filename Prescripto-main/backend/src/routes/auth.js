@@ -56,6 +56,8 @@ router.post('/verify', async (req, res) => {
 
     if (phone) phone = normalizePhone(phone);
 
+    console.log('[VERIFY] Extracted Phone:', phone);
+
     const maskedPhone = phone && phone.length >= 10
       ? `${phone.slice(0, 2)}****${phone.slice(-4)}`
       : phone || 'N/A';
@@ -79,10 +81,12 @@ router.post('/verify', async (req, res) => {
 
     // 2. DOCTOR CHECK
     if (phone) {
+      console.log('[VERIFY] Doctor Lookup Phone:', phone);
       const doctor = await Doctor.findOne({ phone }).catch((err) => {
         console.error('[AUTH VERIFY] Doctor lookup error:', err.message);
         return null;
       });
+      console.log('[VERIFY] Doctor Result:', doctor);
       if (doctor) {
         console.log('[AUTH VERIFY] Role matched: DOCTOR (200 OK)');
         return res.json({
