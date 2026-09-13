@@ -1,5 +1,15 @@
 import { supabase } from '../config/supabase.js';
 
+function extractId(value) {
+  if (!value) return null;
+
+  if (typeof value === 'object') {
+    return value._id || value.id || null;
+  }
+
+  return value;
+}
+
 function createPopulatablePromise(fetchFn) {
   let populateConfigs = [];
   let sortConfig = null;
@@ -117,20 +127,24 @@ async function fetchMedicineRequestDetails(row, populateConfigs = []) {
 }
 
 async function updateMedicineRequestInstance(request) {
-  const pId = typeof request.patientId === 'object' ? request.patientId._id || request.patientId.id : request.patientId;
-  const phId = typeof request.pharmacyId === 'object' ? request.pharmacyId._id || request.pharmacyId.id : request.pharmacyId;
+  const pId = extractId(request.patientId);
+  const phId = extractId(request.pharmacyId);
+  const prId = extractId(request.prescriptionId);
+  const dId = extractId(request.doctorId);
 
   const { error } = await supabase
     .from('medicine_requests')
     .update({
       patient_id: pId,
       pharmacy_id: phId,
+      prescription_id: prId,
+      doctor_id: dId,
       status: request.status,
       refill_reminder_sent: Boolean(request.refillReminderSent),
       ready_at: request.readyAt ? new Date(request.readyAt).toISOString() : null,
       picked_up_at: request.pickedUpAt ? new Date(request.pickedUpAt).toISOString() : null,
     })
-    .eq('id', request._id);
+    .eq('id', extractId(request._id || request.id));
 
   if (error) throw new Error(error.message);
   return request;
@@ -141,14 +155,17 @@ export const MedicineRequest = {
     return createPopulatablePromise(async (populateConfigs, sortConfig) => {
       let req = supabase.from('medicine_requests').select('*');
 
-      if (query.patientId) {
-        req = req.eq('patient_id', query.patientId);
+      const patId = extractId(query.patientId);
+      if (patId) {
+        req = req.eq('patient_id', patId);
       }
-      if (query.pharmacyId) {
-        req = req.eq('pharmacy_id', query.pharmacyId);
+      const phId = extractId(query.pharmacyId);
+      if (phId) {
+        req = req.eq('pharmacy_id', phId);
       }
-      if (query.prescriptionId) {
-        req = req.eq('prescription_id', query.prescriptionId);
+      const prId = extractId(query.prescriptionId);
+      if (prId) {
+        req = req.eq('prescription_id', prId);
       }
       if (query.status) {
         if (typeof query.status === 'object' && query.status.$in) {
@@ -182,8 +199,9 @@ export const MedicineRequest = {
 
   findById(id) {
     return createPopulatablePromise(async (populateConfigs) => {
-      if (!id) return null;
-      const { data, error } = await supabase.from('medicine_requests').select('*').eq('id', id).maybeSingle();
+      const targetId = extractId(id);
+      if (!targetId) return null;
+      const { data, error } = await supabase.from('medicine_requests').select('*').eq('id', targetId).maybeSingle();
       if (error || !data) return null;
       return await fetchMedicineRequestDetails(data, populateConfigs);
     });
@@ -192,9 +210,14 @@ export const MedicineRequest = {
   findOne(query) {
     return createPopulatablePromise(async (populateConfigs) => {
       let req = supabase.from('medicine_requests').select('*');
-      if (query._id || query.id) req = req.eq('id', query._id || query.id);
-      if (query.patientId) req = req.eq('patient_id', query.patientId);
-      if (query.pharmacyId) req = req.eq('pharmacy_id', query.pharmacyId);
+      const targetId = extractId(query._id || query.id);
+      if (targetId) req = req.eq('id', targetId);
+
+      const patId = extractId(query.patientId);
+      if (patId) req = req.eq('patient_id', patId);
+
+      const phId = extractId(query.pharmacyId);
+      if (phId) req = req.eq('pharmacy_id', phId);
 
       const { data, error } = await req.maybeSingle();
       if (error || !data) return null;
@@ -203,32 +226,42 @@ export const MedicineRequest = {
   },
 
   async create(data) {
+    const payload = {
+      patient_id: extractId(data.patientId),
+      pharmacy_id: extractId(data.pharmacyId),
+      prescription_id: extractId(data.prescriptionId),
+      doctor_id: extractId(data.doctorId),
+      requested_medicines: data.requestedMedicines || [],
+      requested_days: data.requestedDays || null,
+      prescribed_days: data.prescribedDays || null,
+      is_partial_request: Boolean(data.isPartialRequest),
+      prescription_snapshot: data.prescriptionSnapshot || {},
+      medicine_name: data.medicineName,
+      normalized_medicine_name: data.normalizedMedicineName,
+      days: Number(data.days),
+      doses_per_day: Number(data.dosesPerDay),
+      quantity: Number(data.quantity),
+      price_per_unit: Number(data.pricePerUnit) || 0,
+      total_amount: Number(data.totalAmount) || 0,
+      status: data.status || 'pending',
+      payment_mode: data.paymentMode || 'cash',
+      reorder_of: extractId(data.reorderOf),
+      refill_reminder_at: data.refillReminderAt ? new Date(data.refillReminderAt).toISOString() : null,
+      refill_reminder_sent: Boolean(data.refillReminderSent),
+      requested_at: data.requestedAt ? new Date(data.requestedAt).toISOString() : new Date().toISOString(),
+    };
+
+    console.log('[MEDICINE REQUEST INSERT]');
+    console.log(JSON.stringify(payload, null, 2));
+
+    console.log(`doctor_id type: ${typeof payload.doctor_id} (${payload.doctor_id})`);
+    console.log(`patient_id type: ${typeof payload.patient_id} (${payload.patient_id})`);
+    console.log(`pharmacy_id type: ${typeof payload.pharmacy_id} (${payload.pharmacy_id})`);
+    console.log(`prescription_id type: ${typeof payload.prescription_id} (${payload.prescription_id})`);
+
     const { data: newReq, error } = await supabase
       .from('medicine_requests')
-      .insert({
-        patient_id: typeof data.patientId === 'object' ? data.patientId._id : data.patientId,
-        pharmacy_id: typeof data.pharmacyId === 'object' ? data.pharmacyId._id : data.pharmacyId,
-        prescription_id: data.prescriptionId,
-        doctor_id: data.doctorId || null,
-        requested_medicines: data.requestedMedicines || [],
-        requested_days: data.requestedDays || null,
-        prescribed_days: data.prescribedDays || null,
-        is_partial_request: Boolean(data.isPartialRequest),
-        prescription_snapshot: data.prescriptionSnapshot || {},
-        medicine_name: data.medicineName,
-        normalized_medicine_name: data.normalizedMedicineName,
-        days: Number(data.days),
-        doses_per_day: Number(data.dosesPerDay),
-        quantity: Number(data.quantity),
-        price_per_unit: Number(data.pricePerUnit) || 0,
-        total_amount: Number(data.totalAmount) || 0,
-        status: data.status || 'pending',
-        payment_mode: data.paymentMode || 'cash',
-        reorder_of: data.reorderOf || null,
-        refill_reminder_at: data.refillReminderAt ? new Date(data.refillReminderAt).toISOString() : null,
-        refill_reminder_sent: Boolean(data.refillReminderSent),
-        requested_at: data.requestedAt ? new Date(data.requestedAt).toISOString() : new Date().toISOString(),
-      })
+      .insert(payload)
       .select()
       .single();
 
@@ -238,17 +271,20 @@ export const MedicineRequest = {
 
   async deleteOne(query) {
     let req = supabase.from('medicine_requests').delete();
-    if (query._id || query.id) req = req.eq('id', query._id || query.id);
+    const targetId = extractId(query._id || query.id);
+    if (targetId) req = req.eq('id', targetId);
     const { error } = await req;
     if (error) throw new Error(error.message);
     return true;
   },
 
   async findByIdAndDelete(id) {
-    const { error } = await supabase.from('medicine_requests').delete().eq('id', id);
+    const targetId = extractId(id);
+    const { error } = await supabase.from('medicine_requests').delete().eq('id', targetId);
     if (error) throw new Error(error.message);
     return true;
   },
 };
 
 export default MedicineRequest;
+
